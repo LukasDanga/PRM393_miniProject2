@@ -33,7 +33,7 @@ class AuthService extends ChangeNotifier {
 
   Future<void> _fetchUser(String userId) async {
     final response = await _supabase
-        .from('users')
+        .from('profiles')
         .select()
         .eq('id', userId)
         .single();
@@ -54,6 +54,7 @@ class AuthService extends ChangeNotifier {
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
+        data: {'full_name': fullName ?? email.split('@').first},
       );
 
       if (response.session == null) {
@@ -62,19 +63,13 @@ class AuthService extends ChangeNotifier {
         return 'Vui lòng kiểm tra email để xác nhận đăng ký.';
       }
 
-      final userId = response.user!.id;
-      await _supabase.from('users').insert({
-        'id': userId,
-        'email': email,
-        'full_name': fullName ?? email.split('@').first,
-      });
-
       _isLoading = false;
       notifyListeners();
       return null;
     } catch (e) {
       _isLoading = false;
       notifyListeners();
+      if (e is AuthException) return e.message;
       return e.toString();
     }
   }
@@ -102,6 +97,7 @@ class AuthService extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       notifyListeners();
+      if (e is AuthException) return e.message;
       return e.toString();
     }
   }
@@ -125,7 +121,7 @@ class AuthService extends ChangeNotifier {
 
       if (updates.isNotEmpty) {
         await _supabase
-            .from('users')
+            .from('profiles')
             .update(updates)
             .eq('id', _currentUser!.id);
       }

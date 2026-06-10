@@ -4,6 +4,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../models/category_model.dart';
+import '../widgets/icon_mapping.dart';
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -14,27 +15,28 @@ class CategoryScreen extends StatefulWidget {
 
 class _CategoryScreenState extends State<CategoryScreen> {
   final _nameController = TextEditingController();
-  Color _selectedColor = Colors.blue;
-  IconData _selectedIcon = Icons.folder_outlined;
+  Color _selectedColor = const Color(0xFF4A90D9);
+  String _selectedIconName = 'folder';
   bool _isEditing = false;
   String? _editingId;
 
-  final List<IconData> _availableIcons = [
-    Icons.folder_outlined,
-    Icons.work_outlined,
-    Icons.school_outlined,
-    Icons.home_outlined,
-    Icons.fitness_center_outlined,
-    Icons.shopping_cart_outlined,
-    Icons.music_note_outlined,
-    Icons.book_outlined,
-    Icons.code_outlined,
-    Icons.language_outlined,
-    Icons.emoji_events_outlined,
-    Icons.flight_outlined,
-    Icons.pets_outlined,
-    Icons.favorite_outlined,
-    Icons.star_outlined,
+  final List<_IconOption> _availableIcons = [
+    _IconOption('folder', Icons.folder_outlined),
+    _IconOption('work', Icons.work_outlined),
+    _IconOption('school', Icons.school_outlined),
+    _IconOption('home', Icons.home_outlined),
+    _IconOption('fitness', Icons.fitness_center_outlined),
+    _IconOption('shopping', Icons.shopping_cart_outlined),
+    _IconOption('music', Icons.music_note_outlined),
+    _IconOption('book', Icons.book_outlined),
+    _IconOption('code', Icons.code_outlined),
+    _IconOption('language', Icons.language_outlined),
+    _IconOption('trophy', Icons.emoji_events_outlined),
+    _IconOption('flight', Icons.flight_outlined),
+    _IconOption('pets', Icons.pets_outlined),
+    _IconOption('heart', Icons.favorite_outlined),
+    _IconOption('star', Icons.star_outlined),
+    _IconOption('person', Icons.person_outlined),
   ];
 
   @override
@@ -46,7 +48,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
   void _resetForm() {
     _nameController.clear();
     _selectedColor = Colors.blue;
-    _selectedIcon = Icons.folder_outlined;
+    _selectedIconName = 'folder';
     _isEditing = false;
     _editingId = null;
   }
@@ -56,7 +58,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
       _nameController.text = category.name;
       _selectedColor =
           Color(int.parse(category.color.replaceFirst('#', '0xFF')));
-      _selectedIcon = Icons.folder_outlined;
+      _selectedIconName = category.icon;
       _isEditing = true;
       _editingId = category.id;
     });
@@ -76,7 +78,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
         userId: auth.currentUser!.id,
         name: _nameController.text.trim(),
         color: hexColor,
-        icon: _selectedIcon.codePoint.toString(),
+        icon: _selectedIconName,
       );
       final error = await db.updateCategory(category);
       if (error != null && mounted) {
@@ -90,7 +92,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
         userId: auth.currentUser!.id,
         name: _nameController.text.trim(),
         color: hexColor,
-        icon: _selectedIcon.codePoint.toString(),
+        icon: _selectedIconName,
       );
       final error = await db.addCategory(category);
       if (error != null && mounted) {
@@ -109,7 +111,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
       builder:
           (ctx) => AlertDialog(
             title: const Text('Xóa danh mục'),
-            content: const Text('Các task trong danh mục cũng sẽ bị xóa. Tiếp tục?'),
+            content: const Text('Task trong danh mục sẽ bỏ trống danh mục. Tiếp tục?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
@@ -202,17 +204,17 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   height: 40,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    children: _availableIcons.map((icon) {
-                      final isSelected = _selectedIcon == icon;
+                    children: _availableIcons.map((item) {
+                      final isSelected = _selectedIconName == item.name;
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: ChoiceChip(
-                          avatar: Icon(icon, size: 20),
+                          avatar: Icon(item.icon, size: 20),
                           label: const SizedBox.shrink(),
                           selected: isSelected,
                           onSelected: (_) {
                             setState(() {
-                              _selectedIcon = icon;
+                              _selectedIconName = item.name;
                             });
                           },
                         ),
@@ -248,10 +250,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                           leading: CircleAvatar(
                             backgroundColor: color,
                             child: Icon(
-                              IconData(
-                                int.parse(cat.icon),
-                                fontFamily: 'MaterialIcons',
-                              ),
+                              getIconData(cat.icon),
                               color: Colors.white,
                             ),
                           ),
@@ -280,4 +279,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
       ),
     );
   }
+}
+
+class _IconOption {
+  final String name;
+  final IconData icon;
+  const _IconOption(this.name, this.icon);
 }

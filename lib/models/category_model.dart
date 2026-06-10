@@ -29,12 +29,13 @@ class CategoryModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
+    final data = <String, dynamic>{
       'user_id': userId,
       'name': name,
       'color': color,
       'icon': icon,
     };
+    if (id.isNotEmpty) data['id'] = id;
+    return data;
   }
 }

@@ -42,14 +42,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (error != null) {
       if (error.contains('Vui lòng kiểm tra email')) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error)),
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Đăng ký'),
+            content: Text(error),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.pop(context);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
         );
-        Navigator.pop(context);
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error)));
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Đăng ký thất bại'),
+            content: Text(error),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
       }
     } else {
       Navigator.pushReplacement(

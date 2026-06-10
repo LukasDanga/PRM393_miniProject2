@@ -3,25 +3,27 @@ import 'category_model.dart';
 class TaskModel {
   final String id;
   final String userId;
-  final String categoryId;
+  final String? categoryId;
   final String title;
   final String? description;
   final bool isCompleted;
   final int priority;
   final DateTime? dueDate;
   final DateTime? createdAt;
+  final DateTime? updatedAt;
   final CategoryModel? category;
 
   TaskModel({
     required this.id,
     required this.userId,
-    required this.categoryId,
+    this.categoryId,
     required this.title,
     this.description,
     this.isCompleted = false,
-    this.priority = 1,
+    this.priority = 2,
     this.dueDate,
     this.createdAt,
+    this.updatedAt,
     this.category,
   });
 
@@ -29,16 +31,19 @@ class TaskModel {
     return TaskModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      categoryId: json['category_id'] as String,
+      categoryId: json['category_id'] as String?,
       title: json['title'] as String,
       description: json['description'] as String?,
       isCompleted: json['is_completed'] as bool? ?? false,
-      priority: json['priority'] as int? ?? 1,
+      priority: json['priority'] as int? ?? 2,
       dueDate: json['due_date'] != null
           ? DateTime.parse(json['due_date'] as String)
           : null,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'] as String)
           : null,
       category: json['categories'] != null
           ? CategoryModel.fromJson(json['categories'] as Map<String, dynamic>)
@@ -47,16 +52,17 @@ class TaskModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
+    final data = <String, dynamic>{
       'user_id': userId,
-      'category_id': categoryId,
       'title': title,
       'description': description,
       'is_completed': isCompleted,
       'priority': priority,
       'due_date': dueDate?.toIso8601String(),
     };
+    if (id.isNotEmpty) data['id'] = id;
+    if (categoryId != null) data['category_id'] = categoryId;
+    return data;
   }
 
   String get priorityLabel {
@@ -82,6 +88,7 @@ class TaskModel {
     int? priority,
     DateTime? dueDate,
     DateTime? createdAt,
+    DateTime? updatedAt,
     CategoryModel? category,
   }) {
     return TaskModel(
@@ -94,6 +101,7 @@ class TaskModel {
       priority: priority ?? this.priority,
       dueDate: dueDate ?? this.dueDate,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       category: category ?? this.category,
     );
   }

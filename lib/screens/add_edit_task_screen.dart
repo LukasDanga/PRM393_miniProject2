@@ -20,7 +20,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
   final _descriptionController = TextEditingController();
 
   String? _selectedCategoryId;
-  int _priority = 1;
+  int _priority = 2;
   DateTime? _dueDate;
   bool _isLoading = false;
 
@@ -72,7 +72,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
       final task = widget.task!.copyWith(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
-        categoryId: _selectedCategoryId ?? '',
+        categoryId: _selectedCategoryId,
         priority: _priority,
         dueDate: _dueDate,
       );
@@ -86,7 +86,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
       final task = TaskModel(
         id: '',
         userId: auth.currentUser!.id,
-        categoryId: _selectedCategoryId ?? '',
+        categoryId: _selectedCategoryId,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         priority: _priority,
@@ -182,10 +182,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                     _selectedCategoryId = value;
                   });
                 },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Vui lòng chọn danh mục';
-                  }
+                validator: (_) {
                   return null;
                 },
               ),

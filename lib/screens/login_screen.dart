@@ -36,9 +36,19 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (error != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Đăng nhập thất bại'),
+          content: Text(error),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     } else {
       Navigator.pushReplacement(
         context,

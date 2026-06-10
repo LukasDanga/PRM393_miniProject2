@@ -87,7 +87,11 @@ class DatabaseService extends ChangeNotifier {
     try {
       await _supabase.from('categories').delete().eq('id', id);
       _categories.removeWhere((c) => c.id == id);
-      _tasks.removeWhere((t) => t.categoryId == id);
+      for (var i = 0; i < _tasks.length; i++) {
+        if (_tasks[i].categoryId == id) {
+          _tasks[i] = _tasks[i].copyWith(categoryId: null, category: null);
+        }
+      }
       notifyListeners();
       return null;
     } catch (e) {
