@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/auth_service.dart';
 import 'services/database_service.dart';
 import 'screens/splash_screen.dart';
+import 'theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,16 +30,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DatabaseService()),
       ],
       child: MaterialApp(
-        title: 'Todo App',
+        title: 'TaskFlow',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF6366F1),
-            brightness: Brightness.light,
-          ),
-          useMaterial3: true,
-          appBarTheme: const AppBarTheme(centerTitle: true),
-        ),
+        theme: AppTheme.lightTheme,
         home: const SplashScreen(),
       ),
     );

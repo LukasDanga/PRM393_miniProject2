@@ -14,6 +14,12 @@ class DatabaseService extends ChangeNotifier {
   List<TaskModel> get tasks => _tasks;
   bool get isLoading => _isLoading;
 
+  DatabaseService() {
+    _supabase.auth.onAuthStateChange.listen((authState) {
+      if (authState.session == null) reset();
+    });
+  }
+
   void reset() {
     _categories = [];
     _tasks = [];

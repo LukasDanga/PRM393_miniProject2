@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
@@ -16,9 +17,22 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedFilter = 0;
-  String? _selectedCategoryId;
-  int? _selectedPriority;
+  bool _showTodayOnly = false;
+
+  // Draft filter values (before apply)
+  Set<String> _draftStatus = {};
+  Set<String> _draftCategories = {};
+  Set<int> _draftPriorities = {};
+
+  // Applied filter values (after apply)
+  Set<String> _statusFilter = {};
+  Set<String> _categoryFilter = {};
+  Set<int> _priorityFilter = {};
+
+  bool get _hasActiveFilter =>
+      _statusFilter.isNotEmpty ||
+      _categoryFilter.isNotEmpty ||
+      _priorityFilter.isNotEmpty;
 
   @override
   void initState() {
@@ -30,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final auth = context.read<AuthService>();
     final db = context.read<DatabaseService>();
     if (auth.currentUser != null) {
+      db.reset();
       db.fetchTasks(auth.currentUser!.id);
       db.fetchCategories(auth.currentUser!.id);
     }
@@ -38,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<TaskModel> _filteredTasks(List<TaskModel> tasks) {
     var filtered = tasks;
 
-    if (_selectedFilter == 0) {
+    if (_showTodayOnly) {
       final today = DateTime.now();
       filtered = filtered.where((t) {
         if (t.dueDate == null) return false;
@@ -46,173 +61,432 @@ class _HomeScreenState extends State<HomeScreen> {
             t.dueDate!.month == today.month &&
             t.dueDate!.day == today.day;
       }).toList();
-    } else if (_selectedFilter == 1) {
+    }
+
+    if (_statusFilter.contains('pending')) {
       filtered = filtered.where((t) => !t.isCompleted).toList();
-    } else if (_selectedFilter == 2) {
+    }
+    if (_statusFilter.contains('done')) {
       filtered = filtered.where((t) => t.isCompleted).toList();
     }
 
-    if (_selectedCategoryId != null) {
-      filtered =
-          filtered.where((t) => t.categoryId == _selectedCategoryId).toList();
+    if (_categoryFilter.isNotEmpty) {
+      filtered = filtered.where((t) => _categoryFilter.contains(t.categoryId)).toList();
     }
 
-    if (_selectedPriority != null) {
-      filtered =
-          filtered.where((t) => t.priority == _selectedPriority).toList();
+    if (_priorityFilter.isNotEmpty) {
+      filtered = filtered.where((t) => _priorityFilter.contains(t.priority)).toList();
     }
 
     return filtered;
+  }
+
+  void _showFilterSheet(DatabaseService db) {
+    _draftStatus = Set.from(_statusFilter);
+    _draftCategories = Set.from(_categoryFilter);
+    _draftPriorities = Set.from(_priorityFilter);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text('Bộ lọc', style: GoogleFonts.outfit(
+                  fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A),
+                )),
+                const SizedBox(height: 20),
+                Text('Trạng thái', style: GoogleFonts.outfit(
+                  fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B),
+                )),
+                const SizedBox(height: 8),
+                Row(children: [
+                  _filterChip(ctx, setSheetState, 'Chưa xong', _draftStatus, 'pending'),
+                  const SizedBox(width: 8),
+                  _filterChip(ctx, setSheetState, 'Đã xong', _draftStatus, 'done'),
+                ]),
+                const SizedBox(height: 20),
+                Text('Danh mục', style: GoogleFonts.outfit(
+                  fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B),
+                )),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8, runSpacing: 8,
+                  children: db.categories.map((c) {
+                    final color = Color(int.parse(c.color.replaceFirst('#', '0xFF')));
+                    return _filterChip(ctx, setSheetState, c.name, _draftCategories, c.id,
+                        color: color);
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+                Text('Mức ưu tiên', style: GoogleFonts.outfit(
+                  fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B),
+                )),
+                const SizedBox(height: 8),
+                Row(children: [
+                  _filterChip(ctx, setSheetState, 'Thấp', _draftPriorities, 1),
+                  const SizedBox(width: 8),
+                  _filterChip(ctx, setSheetState, 'TB', _draftPriorities, 2),
+                  const SizedBox(width: 8),
+                  _filterChip(ctx, setSheetState, 'Cao', _draftPriorities, 3),
+                ]),
+                const SizedBox(height: 24),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        setState(() {
+                          _statusFilter = {};
+                          _categoryFilter = {};
+                          _priorityFilter = {};
+                          _showTodayOnly = false;
+                        });
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text('Bỏ lọc'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _statusFilter = Set.from(_draftStatus);
+                          _categoryFilter = Set.from(_draftCategories);
+                          _priorityFilter = Set.from(_draftPriorities);
+                        });
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text('Áp dụng bộ lọc'),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip<T>(BuildContext ctx, void Function(void Function()) setSheetState,
+      String label, Set<T> selectedSet, T value, {Color? color}) {
+    final isSelected = selectedSet.contains(value);
+    return GestureDetector(
+      onTap: () {
+        setSheetState(() {
+          if (isSelected) {
+            selectedSet.remove(value);
+          } else {
+            selectedSet.add(value);
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? (color ?? const Color(0xFF059669)).withValues(alpha: 0.1) : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? (color ?? const Color(0xFF059669)) : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (color != null)
+              Container(
+                width: 8, height: 8, margin: const EdgeInsets.only(right: 6),
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+            Text(label, style: GoogleFonts.outfit(
+              fontSize: 13, fontWeight: FontWeight.w500,
+              color: isSelected ? (color ?? const Color(0xFF059669)) : const Color(0xFF64748B),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
     final db = context.watch<DatabaseService>();
-
     final filteredTasks = _filteredTasks(db.tasks);
+    final todayTasks = db.tasks.where((t) {
+      if (t.dueDate == null) return false;
+      final now = DateTime.now();
+      return t.dueDate!.year == now.year && t.dueDate!.month == now.month && t.dueDate!.day == now.day;
+    }).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Xin chào, ${auth.currentUser?.fullName ?? 'User'}'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.category_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CategoryScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildFilterBar(db),
-          Expanded(
-            child:
-                db.isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : filteredTasks.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      itemCount: filteredTasks.length,
-                      itemBuilder: (context, index) {
-                        return _buildTaskCard(filteredTasks[index], db);
-                      },
-                    ),
-          ),
-        ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(auth, todayTasks.length),
+            _buildFilterBar(db),
+            Expanded(
+              child: db.isLoading
+                  ? _buildLoading()
+                  : filteredTasks.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          itemCount: filteredTasks.length,
+                          itemBuilder: (context, index) =>
+                              _buildTaskCard(filteredTasks[index], db),
+                        ),
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.push(
+          final result = await Navigator.push<bool>(
             context,
-            MaterialPageRoute(builder: (_) => const AddEditTaskScreen()),
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => const AddEditTaskScreen(),
+              transitionsBuilder: (_, a, __, c) =>
+                  FadeTransition(opacity: a, child: c),
+              transitionDuration: const Duration(milliseconds: 300),
+            ),
           );
+          if (result == true) _showSnack('Đã thêm task');
         },
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add_rounded),
+      ),
+    );
+  }
+
+  Widget _buildHeader(AuthService auth, int todayCount) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 16, 8, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Xin chào,', style: GoogleFonts.outfit(
+                  fontSize: 14, color: const Color(0xFF64748B),
+                )),
+                const SizedBox(height: 2),
+                Text(auth.currentUser?.fullName ?? 'User', style: GoogleFonts.outfit(
+                  fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A),
+                  letterSpacing: -0.3,
+                )),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF059669).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.today_rounded, size: 16, color: Color(0xFF059669)),
+                const SizedBox(width: 6),
+                Text('$todayCount hôm nay', style: GoogleFonts.outfit(
+                  fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF059669),
+                )),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.grid_view_rounded, size: 22),
+            onPressed: () => Navigator.push(
+              context, MaterialPageRoute(builder: (_) => const CategoryScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.person_outlined, size: 22),
+            onPressed: () => Navigator.push(
+              context, MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildFilterBar(DatabaseService db) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+      child: Row(
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildFilterChip('Hôm nay', 0),
-                const SizedBox(width: 8),
-                _buildFilterChip('Chưa xong', 1),
-                const SizedBox(width: 8),
-                _buildFilterChip('Đã xong', 2),
-              ],
+          _buildChip('Tất cả', false, () => setState(() => _showTodayOnly = false)),
+          const SizedBox(width: 8),
+          _buildChip('Hôm nay', _showTodayOnly, () => setState(() => _showTodayOnly = true)),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => _showFilterSheet(db),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: _hasActiveFilter
+                    ? const Color(0xFF059669).withValues(alpha: 0.1)
+                    : Colors.white,
+                border: Border.all(
+                  color: _hasActiveFilter
+                      ? const Color(0xFF059669)
+                      : const Color(0xFFE2E8F0),
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.filter_list_rounded,
+                    size: 16,
+                    color: _hasActiveFilter
+                        ? const Color(0xFF059669)
+                        : const Color(0xFF64748B),
+                  ),
+                  const SizedBox(width: 4),
+                  Text('Lọc', style: GoogleFonts.outfit(
+                    fontSize: 13, fontWeight: FontWeight.w500,
+                    color: _hasActiveFilter
+                        ? const Color(0xFF059669)
+                        : const Color(0xFF64748B),
+                  )),
+                  if (_hasActiveFilter) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF059669),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${_statusFilter.length + _categoryFilter.length + _priorityFilter.length}',
+                        style: GoogleFonts.outfit(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildCategoryDropdown(db),
-                const SizedBox(width: 8),
-                _buildPriorityDropdown(),
-              ],
+          if (_hasActiveFilter) ...[
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: () => setState(() {
+                _statusFilter = {};
+                _categoryFilter = {};
+                _priorityFilter = {};
+              }),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDC2626).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.close_rounded, size: 16, color: Color(0xFFDC2626)),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, int index) {
-    final isSelected = _selectedFilter == index;
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) {
-        setState(() {
-          _selectedFilter = index;
-        });
-      },
-    );
-  }
-
-  Widget _buildCategoryDropdown(DatabaseService db) {
-    return DropdownButtonHideUnderline(
-      child: DropdownButton<String?>(
-        value: _selectedCategoryId,
-        hint: const Text('Danh mục'),
-        items: [
-          const DropdownMenuItem(value: null, child: Text('Tất cả')),
-          ...db.categories.map(
-            (c) => DropdownMenuItem(value: c.id, child: Text(c.name)),
+  Widget _buildChip(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF059669) : Colors.white,
+          border: Border.all(
+            color: selected ? const Color(0xFF059669) : const Color(0xFFE2E8F0),
           ),
-        ],
-        onChanged: (value) {
-          setState(() {
-            _selectedCategoryId = value;
-          });
-        },
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(label, style: GoogleFonts.outfit(
+          fontSize: 13, fontWeight: FontWeight.w500,
+          color: selected ? Colors.white : const Color(0xFF64748B),
+        )),
       ),
     );
   }
 
-  Widget _buildPriorityDropdown() {
-    return DropdownButtonHideUnderline(
-      child: DropdownButton<int?>(
-        value: _selectedPriority,
-        hint: const Text('Ưu tiên'),
-        items: const [
-          DropdownMenuItem(value: null, child: Text('Tất cả')),
-          DropdownMenuItem(value: 1, child: Text('Thấp')),
-          DropdownMenuItem(value: 2, child: Text('Trung bình')),
-          DropdownMenuItem(value: 3, child: Text('Cao')),
-        ],
-        onChanged: (value) {
-          setState(() {
-            _selectedPriority = value;
-          });
-        },
+  Widget _buildLoading() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: 5,
+      itemBuilder: (_, __) => Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(height: 16, width: 160, decoration: BoxDecoration(
+              color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(4),
+            )),
+            const SizedBox(height: 8),
+            Container(height: 12, width: 240, decoration: BoxDecoration(
+              color: const Color(0xFFE2E8F0).withValues(alpha: 0.6), borderRadius: BorderRadius.circular(4),
+            )),
+            const SizedBox(height: 12),
+            Row(children: [
+              Container(height: 24, width: 60, decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0).withValues(alpha: 0.4), borderRadius: BorderRadius.circular(12),
+              )),
+              const SizedBox(width: 8),
+              Container(height: 24, width: 40, decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0).withValues(alpha: 0.4), borderRadius: BorderRadius.circular(12),
+              )),
+            ]),
+          ],
+        ),
       ),
     );
   }
@@ -222,21 +496,22 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.inbox_outlined,
-            size: 80,
-            color: Colors.grey[400],
+          Container(
+            width: 80, height: 80,
+            decoration: BoxDecoration(
+              color: const Color(0xFF059669).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Icon(Icons.inbox_rounded, size: 36, color: Color(0xFF059669)),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Không có công việc nào',
-            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-          ),
+          const SizedBox(height: 20),
+          Text('Không có công việc nào', style: GoogleFonts.outfit(
+            fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A),
+          )),
           const SizedBox(height: 8),
-          Text(
-            'Nhấn + để thêm công việc mới',
-            style: TextStyle(color: Colors.grey[500]),
-          ),
+          Text('Nhấn + để thêm công việc mới', style: GoogleFonts.outfit(
+            fontSize: 14, color: const Color(0xFF64748B),
+          )),
         ],
       ),
     );
@@ -244,127 +519,162 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTaskCard(TaskModel task, DatabaseService db) {
     final category = task.category;
+    final color = category != null
+        ? Color(int.parse(category.color.replaceFirst('#', '0xFF')))
+        : null;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: Checkbox(
-          value: task.isCompleted,
-          onChanged: (value) {
-            db.toggleTask(task.id, value ?? false);
-          },
+    return Dismissible(
+      key: ValueKey(task.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        decoration: BoxDecoration(
+          color: const Color(0xFFDC2626).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
         ),
-        title: Text(
-          task.title,
-          style: TextStyle(
-            decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-            color: task.isCompleted ? Colors.grey : null,
+        child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
+      ),
+      confirmDismiss: (_) async {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Xóa task'),
+            content: const Text('Bạn có chắc muốn xóa?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+              TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Xóa')),
+            ],
           ),
+        );
+        if (confirm == true) {
+          await db.deleteTask(task.id);
+          _showSnack('Đã xóa task');
+        }
+        return false;
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.5)),
         ),
-        subtitle: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (task.description != null && task.description!.isNotEmpty)
-              Text(
-                task.description!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                if (category != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Color(int.parse(category.color.replaceFirst('#', '0xFF'))),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      category.name,
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
+            GestureDetector(
+              onTap: () {
+                db.toggleTask(task.id, !task.isCompleted);
+                _showSnack(task.isCompleted ? 'Đã đánh dấu chưa xong' : 'Đã hoàn thành');
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 22, height: 22,
+                margin: const EdgeInsets.only(top: 2),
+                decoration: BoxDecoration(
+                  color: task.isCompleted ? const Color(0xFF059669) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: task.isCompleted ? const Color(0xFF059669) : const Color(0xFFCBD5E1),
+                    width: task.isCompleted ? 0 : 1.5,
                   ),
-                const SizedBox(width: 8),
-                _priorityBadge(task.priority),
-                const SizedBox(width: 8),
-                if (task.dueDate != null)
-                  Text(
-                    DateFormat('dd/MM').format(task.dueDate!),
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-              ],
-            ),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) async {
-            if (value == 'edit') {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AddEditTaskScreen(task: task),
                 ),
-              );
-            } else if (value == 'delete') {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder:
-                    (ctx) => AlertDialog(
+                child: task.isCompleted
+                    ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(task.title, style: GoogleFonts.outfit(
+                    fontSize: 15, fontWeight: FontWeight.w600,
+                    color: task.isCompleted ? const Color(0xFF94A3B8) : const Color(0xFF0F172A),
+                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                  )),
+                  if (task.description != null && task.description!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(task.description!, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(fontSize: 13, color: const Color(0xFF94A3B8))),
+                  ],
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    if (color != null && category != null)
+                      _buildTag(category.name, color),
+                    if (color != null) const SizedBox(width: 6),
+                    _buildPriorityTag(task.priority),
+                    if (task.dueDate != null) ...[
+                      const SizedBox(width: 6),
+                      _buildTag(DateFormat('dd/MM').format(task.dueDate!), const Color(0xFF64748B)),
+                    ],
+                  ]),
+                ],
+              ),
+            ),
+            PopupMenuButton<String>(
+              onSelected: (value) async {
+                if (value == 'edit') {
+                  final result = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(builder: (_) => AddEditTaskScreen(task: task)),
+                  );
+                  if (result == true) _showSnack('Đã cập nhật task');
+                } else if (value == 'delete') {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       title: const Text('Xóa task'),
                       content: const Text('Bạn có chắc muốn xóa?'),
                       actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Hủy'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Xóa'),
-                        ),
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Xóa')),
                       ],
                     ),
-              );
-              if (confirm == true) {
-                await db.deleteTask(task.id);
-              }
-            }
-          },
-          itemBuilder:
-              (_) => [
-                const PopupMenuItem(value: 'edit', child: Text('Sửa')),
-                const PopupMenuItem(value: 'delete', child: Text('Xóa')),
+                  );
+                  if (confirm == true) {
+                    await db.deleteTask(task.id);
+                    _showSnack('Đã xóa task');
+                  }
+                }
+              },
+              icon: const Icon(Icons.more_horiz_rounded, size: 20, color: Color(0xFF94A3B8)),
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'edit', child: Row(
+                  children: [Icon(Icons.edit_outlined, size: 18), SizedBox(width: 8), Text('Sửa')],
+                )),
+                const PopupMenuItem(value: 'delete', child: Row(
+                  children: [Icon(Icons.delete_outline, size: 18, color: Colors.red), SizedBox(width: 8), Text('Xóa', style: TextStyle(color: Colors.red))],
+                )),
               ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _priorityBadge(int priority) {
-    Color color;
-    switch (priority) {
-      case 1:
-        color = Colors.green;
-      case 2:
-        color = Colors.orange;
-      case 3:
-        color = Colors.red;
-      default:
-        color = Colors.grey;
-    }
+  Widget _buildTag(String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        priority == 1 ? 'Thấp' : priority == 2 ? 'TB' : 'Cao',
-        style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
-      ),
+      child: Text(text, style: GoogleFonts.outfit(
+        fontSize: 11, fontWeight: FontWeight.w600, color: color,
+      )),
     );
+  }
+
+  Widget _buildPriorityTag(int priority) {
+    const labels = {1: 'Thấp', 2: 'TB', 3: 'Cao'};
+    const colors = {1: Color(0xFF059669), 2: Color(0xFFD97706), 3: Color(0xFFDC2626)};
+    return _buildTag(labels[priority]!, colors[priority]!);
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 
@@ -30,53 +31,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-
     final auth = context.read<AuthService>();
     final error = await auth.signUp(
       email: _emailController.text.trim(),
       password: _passwordController.text,
       fullName: _fullNameController.text.trim(),
     );
-
     if (!mounted) return;
-
     if (error != null) {
-      if (error.contains('Vui lòng kiểm tra email')) {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Đăng ký'),
-            content: Text(error),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pop(context);
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      } else {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Đăng ký thất bại'),
-            content: Text(error),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(error.contains('kiểm tra email') ? 'Đăng ký' : 'Đăng ký thất bại'),
+          content: Text(error),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                if (error.contains('kiểm tra email')) Navigator.pop(context);
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const HomeScreen(),
+          transitionsBuilder: (_, a, __, c) =>
+              FadeTransition(opacity: a, child: c),
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
       );
     }
   }
@@ -86,34 +74,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = context.watch<AuthService>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Đăng ký')),
-      body: Center(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Form(
             key: _formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.person_add_outlined,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 Text(
                   'Tạo tài khoản',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: GoogleFonts.outfit(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
+                    letterSpacing: -0.5,
+                  ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 8),
+                Text(
+                  'Đăng ký để bắt đầu quản lý công việc',
+                  style: GoogleFonts.outfit(
+                    fontSize: 15,
+                    color: const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 40),
                 TextFormField(
                   controller: _fullNameController,
                   decoration: const InputDecoration(
                     labelText: 'Họ và tên',
-                    prefixIcon: Icon(Icons.person_outlined),
-                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person_outlined, size: 20),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -122,16 +120,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
                     labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.email_outlined, size: 20),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Vui lòng nhập email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Email không hợp lệ';
-                    }
+                    if (value == null || value.isEmpty) return 'Vui lòng nhập email';
+                    if (!value.contains('@')) return 'Email không hợp lệ';
                     return null;
                   },
                 ),
@@ -141,28 +134,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
                     labelText: 'Mật khẩu',
-                    prefixIcon: const Icon(Icons.lock_outlined),
-                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock_outlined, size: 20),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
+                        _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        size: 20,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Vui lòng nhập mật khẩu';
-                    }
-                    if (value.length < 6) {
-                      return 'Mật khẩu phải có ít nhất 6 ký tự';
-                    }
+                    if (value == null || value.isEmpty) return 'Vui lòng nhập mật khẩu';
+                    if (value.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự';
                     return null;
                   },
                 ),
@@ -172,49 +155,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   obscureText: _obscureConfirm,
                   decoration: InputDecoration(
                     labelText: 'Xác nhận mật khẩu',
-                    prefixIcon: const Icon(Icons.lock_outlined),
-                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock_outlined, size: 20),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureConfirm
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
+                        _obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        size: 20,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _obscureConfirm = !_obscureConfirm;
-                        });
-                      },
+                      onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
                     ),
                   ),
                   validator: (value) {
-                    if (value != _passwordController.text) {
-                      return 'Mật khẩu không khớp';
-                    }
+                    if (value != _passwordController.text) return 'Mật khẩu không khớp';
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
-                  height: 48,
+                  height: 50,
                   child: ElevatedButton(
                     onPressed: auth.isLoading ? null : _register,
-                    child:
-                        auth.isLoading
-                            ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                              ),
-                            )
-                            : const Text(
-                              'Đăng ký',
-                              style: TextStyle(fontSize: 16),
-                            ),
+                    child: auth.isLoading
+                        ? const SizedBox(
+                            width: 20, height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text('Đăng ký'),
                   ),
                 ),
+                const SizedBox(height: 24),
               ],
             ),
           ),

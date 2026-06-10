@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../models/category_model.dart';
 import '../widgets/icon_mapping.dart';
+
+class _IconOption {
+  final String name;
+  final IconData icon;
+  const _IconOption(this.name, this.icon);
+}
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -17,6 +24,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
   final _nameController = TextEditingController();
   Color _selectedColor = const Color(0xFF4A90D9);
   String _selectedIconName = 'folder';
+  bool _isAdding = false;
   bool _isEditing = false;
   String? _editingId;
 
@@ -47,26 +55,26 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   void _resetForm() {
     _nameController.clear();
-    _selectedColor = Colors.blue;
+    _selectedColor = const Color(0xFF4A90D9);
     _selectedIconName = 'folder';
+    _isAdding = false;
     _isEditing = false;
     _editingId = null;
   }
 
-  void _editCategory(CategoryModel category) {
+  void _editCategory(CategoryModel cat) {
     setState(() {
-      _nameController.text = category.name;
-      _selectedColor =
-          Color(int.parse(category.color.replaceFirst('#', '0xFF')));
-      _selectedIconName = category.icon;
+      _nameController.text = cat.name;
+      _selectedColor = Color(int.parse(cat.color.replaceFirst('#', '0xFF')));
+      _selectedIconName = cat.icon;
+      _isAdding = true;
       _isEditing = true;
-      _editingId = category.id;
+      _editingId = cat.id;
     });
   }
 
   Future<void> _saveCategory() async {
     if (_nameController.text.trim().isEmpty) return;
-
     final auth = context.read<AuthService>();
     final db = context.read<DatabaseService>();
     final hexColor =
@@ -80,12 +88,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
         color: hexColor,
         icon: _selectedIconName,
       );
-      final error = await db.updateCategory(category);
-      if (error != null && mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error)));
-      }
+      await db.updateCategory(category);
+      _showSnack('Đã cập nhật danh mục');
     } else {
       final category = CategoryModel(
         id: '',
@@ -94,41 +98,64 @@ class _CategoryScreenState extends State<CategoryScreen> {
         color: hexColor,
         icon: _selectedIconName,
       );
-      final error = await db.addCategory(category);
-      if (error != null && mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error)));
-      }
+      await db.addCategory(category);
+      _showSnack('Đã thêm danh mục');
     }
-
     _resetForm();
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _deleteCategory(String id) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('Xóa danh mục'),
-            content: const Text('Task trong danh mục sẽ bỏ trống danh mục. Tiếp tục?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Hủy'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Xóa'),
-              ),
-            ],
-          ),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Xóa danh mục'),
+        content: const Text('Task trong danh mục sẽ bỏ trống danh mục. Tiếp tục?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Xóa')),
+        ],
+      ),
     );
-
     if (confirm == true) {
-      final db = context.read<DatabaseService>();
-      await db.deleteCategory(id);
+      await context.read<DatabaseService>().deleteCategory(id);
+      _showSnack('Đã xóa danh mục');
     }
+  }
+
+  void _showColorPicker() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Chọn màu'),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            pickerColor: _selectedColor,
+            onColorChanged: (c) => setState(() => _selectedColor = c),
+            enableAlpha: false,
+            labelTypes: const [],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+        ],
+      ),
+    );
   }
 
   @override
@@ -136,153 +163,185 @@ class _CategoryScreenState extends State<CategoryScreen> {
     final db = context.watch<DatabaseService>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Quản lý danh mục')),
+      appBar: AppBar(title: const Text('Danh mục')),
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Tên danh mục',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: _isEditing
-                        ? IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: _resetForm,
-                          )
-                        : null,
+          if (_isAdding)
+            Container(
+              padding: const EdgeInsets.all(20),
+              margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.5)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _nameController,
+                          autofocus: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Tên danh mục',
+                            hintText: 'VD: Học tập',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: _showColorPicker,
+                        child: Container(
+                          width: 40, height: 40,
+                          decoration: BoxDecoration(
+                            color: _selectedColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Text('Màu sắc: '),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder:
-                              (ctx) => AlertDialog(
-                                title: const Text('Chọn màu'),
-                                content: SingleChildScrollView(
-                                  child: ColorPicker(
-                                    pickerColor: _selectedColor,
-                                    onColorChanged: (color) {
-                                      setState(() {
-                                        _selectedColor = color;
-                                      });
-                                    },
-                                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 40,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: _availableIcons.map((item) {
+                        final sel = _selectedIconName == item.name;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selectedIconName = item.name),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 40, height: 40,
+                              decoration: BoxDecoration(
+                                color: sel ? _selectedColor.withValues(alpha: 0.1) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: sel ? _selectedColor : const Color(0xFFE2E8F0),
                                 ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx),
-                                    child: const Text('OK'),
+                              ),
+                              child: Icon(item.icon, size: 20,
+                                color: sel ? _selectedColor : const Color(0xFF94A3B8)),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _resetForm,
+                          child: const Text('Hủy'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _saveCategory,
+                          icon: Icon(_isEditing ? Icons.save_rounded : Icons.add_rounded, size: 18),
+                          label: Text(_isEditing ? 'Cập nhật' : 'Thêm'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: _isAdding
+                  ? null
+                  : OutlinedButton.icon(
+                      onPressed: () => setState(() => _isAdding = true),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Thêm danh mục'),
+                    ),
+            ),
+          ),
+          Expanded(
+            child: db.categories.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 64, height: 64,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF059669).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(Icons.folder_outlined, size: 32, color: Color(0xFF059669)),
+                        ),
+                        const SizedBox(height: 16),
+                        Text('Chưa có danh mục nào', style: GoogleFonts.outfit(
+                          fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A),
+                        )),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: db.categories.length,
+                    itemBuilder: (context, index) {
+                      final cat = db.categories[index];
+                      final color = Color(int.parse(cat.color.replaceFirst('#', '0xFF')));
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.5)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(getIconData(cat.icon), size: 22, color: color),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(cat.name, style: GoogleFonts.outfit(
+                                    fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A),
+                                  )),
+                                  Text('${db.tasks.where((t) => t.categoryId == cat.id).length} task',
+                                    style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF94A3B8)),
                                   ),
                                 ],
                               ),
-                        );
-                      },
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: _selectedColor,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.grey),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 40,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: _availableIcons.map((item) {
-                      final isSelected = _selectedIconName == item.name;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          avatar: Icon(item.icon, size: 20),
-                          label: const SizedBox.shrink(),
-                          selected: isSelected,
-                          onSelected: (_) {
-                            setState(() {
-                              _selectedIconName = item.name;
-                            });
-                          },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF64748B)),
+                              onPressed: () => _editCategory(cat),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFDC2626)),
+                              onPressed: () => _deleteCategory(cat.id),
+                            ),
+                          ],
                         ),
                       );
-                    }).toList(),
+                    },
                   ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _saveCategory,
-                    icon: Icon(_isEditing ? Icons.save : Icons.add),
-                    label: Text(_isEditing ? 'Cập nhật' : 'Thêm danh mục'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(),
-          Expanded(
-            child:
-                db.categories.isEmpty
-                    ? const Center(child: Text('Chưa có danh mục nào'))
-                    : ListView.builder(
-                      itemCount: db.categories.length,
-                      itemBuilder: (context, index) {
-                        final cat = db.categories[index];
-                        final color = Color(
-                          int.parse(cat.color.replaceFirst('#', '0xFF')),
-                        );
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: color,
-                            child: Icon(
-                              getIconData(cat.icon),
-                              color: Colors.white,
-                            ),
-                          ),
-                          title: Text(cat.name),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined),
-                                onPressed: () => _editCategory(cat),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete_outlined,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () => _deleteCategory(cat.id),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
           ),
         ],
       ),
     );
   }
-}
-
-class _IconOption {
-  final String name;
-  final IconData icon;
-  const _IconOption(this.name, this.icon);
 }
