@@ -1,0 +1,15 @@
+# Flutter
+.dart_tool/
+.packages
+build/
+*.iml
+.idea/
+.vscode/
+*.lock
+
+# Env
+.env
+
+# OS
+.DS_Store
+Thumbs.db
