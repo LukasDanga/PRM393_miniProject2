@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../models/task_model.dart';
 import 'add_edit_task_screen.dart';
+import 'task_detail_screen.dart';
 import 'category_screen.dart';
 import 'profile_screen.dart';
 
@@ -97,11 +98,15 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
                   child: Container(
@@ -184,6 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ]),
               ],
+            ),
             ),
           ),
         ),
@@ -352,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFilterBar(DatabaseService db) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Row(
         children: [
           _buildChip('Tất cả', false, () => setState(() => _showTodayOnly = false)),
@@ -362,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
           GestureDetector(
             onTap: () => _showFilterSheet(db),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
                 color: _hasActiveFilter
                     ? const Color(0xFF059669).withValues(alpha: 0.1)
@@ -409,24 +415,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          if (_hasActiveFilter) ...[
-            const SizedBox(width: 6),
-            GestureDetector(
-              onTap: () => setState(() {
-                _statusFilter = {};
-                _categoryFilter = {};
-                _priorityFilter = {};
-              }),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDC2626).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(Icons.close_rounded, size: 16, color: Color(0xFFDC2626)),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -437,7 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? const Color(0xFF059669) : Colors.white,
           border: Border.all(
@@ -554,14 +542,21 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         return false;
       },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.5)),
-        ),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => TaskDetailScreen(task: task)),
+          );
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.5)),
+          ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -603,15 +598,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: GoogleFonts.outfit(fontSize: 13, color: const Color(0xFF94A3B8))),
                   ],
                   const SizedBox(height: 10),
-                  Row(children: [
+                  Wrap(spacing: 6, runSpacing: 6, children: [
                     if (color != null && category != null)
                       _buildTag(category.name, color),
-                    if (color != null) const SizedBox(width: 6),
                     _buildPriorityTag(task.priority),
-                    if (task.dueDate != null) ...[
-                      const SizedBox(width: 6),
+                    if (task.dueDate != null)
                       _buildTag(DateFormat('dd/MM').format(task.dueDate!), const Color(0xFF64748B)),
-                    ],
                   ]),
                 ],
               ),
@@ -654,6 +646,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ],
+        ),
         ),
       ),
     );
