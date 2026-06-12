@@ -9,7 +9,7 @@ import 'theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load();
+  await dotenv.load(); // đọc SUPABASE_URL, SUPABASE_ANON_KEY từ .env
 
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
