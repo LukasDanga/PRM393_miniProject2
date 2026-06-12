@@ -13,3 +13,13 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Auto-generated
+.flutter-plugins-dependencies
+
+# Local config
+android/gradle.properties
+
+# Tools
+.codegraph/
+excalidraw.log
