@@ -37,11 +37,11 @@ SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ### 2.3 Các bảng trong Supabase
 
-| Table | Mô tả | Khóa ngoại |
-|-------|-------|-----------|
-| `profiles` | Thông tin người dùng | `id` → auth.users |
-| `categories` | Danh mục công việc | `user_id` → profiles.id |
-| `tasks` | Công việc | `user_id` → profiles.id, `category_id` → categories.id |
+| Table        | Mô tả                | Khóa ngoại                                             |
+|--------------|----------------------|--------------------------------------------------------|
+| `profiles`   | Thông tin người dùng | `id` → auth.users                                      |
+| `categories` | Danh mục công việc   | `user_id` → profiles.id                                |
+| `tasks`      | Công việc            | `user_id` → profiles.id, `category_id` → categories.id |
 
 ---
 
