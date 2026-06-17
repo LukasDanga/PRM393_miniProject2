@@ -158,14 +158,14 @@ for (var i = 0; i < _tasks.length; i++) {
 
 ## 5. Authentication — `lib/services/auth_service.dart`
 
-| Chức năng | Method Supabase |
-|-----------|----------------|
-| Đăng ký | `_supabase.auth.signUp(email:, password:, data:)` |
-| Đăng nhập | `_supabase.auth.signInWithPassword(email:, password:)` |
-| Đăng xuất | `_supabase.auth.signOut()` |
-| Lấy profile | `_supabase.from('profiles').select().eq('id', userId).single()` |
-| Cập nhật profile | `_supabase.from('profiles').update(updates).eq('id', id)` |
-| Lắng nghe auth state | `_supabase.auth.onAuthStateChange.listen(...)` |
+| Chức năng            | Method Supabase                                                 |
+|----------------------|-----------------------------------------------------------------|
+| Đăng ký              | `_supabase.auth.signUp(email:, password:, data:)`               |
+| Đăng nhập            | `_supabase.auth.signInWithPassword(email:, password:)`          |
+| Đăng xuất            | `_supabase.auth.signOut()`                                      |
+| Lấy profile          | `_supabase.from('profiles').select().eq('id', userId).single()` |
+| Cập nhật profile     | `_supabase.from('profiles').update(updates).eq('id', id)`       |
+| Lắng nghe auth state | `_supabase.auth.onAuthStateChange.listen(...)`                  |
 
 ---
 
@@ -249,16 +249,16 @@ _supabase.auth.onAuthStateChange.listen((authState) {
 
 ## 9. Tổng kết
 
-| Thành phần | File chính | Dòng code CRUD |
-|-----------|-----------|----------------|
-| Kết nối Supabase | `lib/main.dart` | 14-17 |
-| Auth | `lib/services/auth_service.dart` | Toàn bộ file (135 dòng) |
-| CRUD Tasks | `lib/services/database_service.dart` | 110-201 |
-| CRUD Categories | `lib/services/database_service.dart` | 31-106 |
-| Task Model | `lib/models/task_model.dart` | 108 dòng |
-| Category Model | `lib/models/category_model.dart` | 41 dòng |
-| User Model | `lib/models/user_model.dart` | 36 dòng |
-| UI Task | `lib/screens/home_screen.dart` | Gọi CRUD qua Provider |
-| UI Add/Edit | `lib/screens/add_edit_task_screen.dart` | Gọi addTask/updateTask |
-| UI Category | `lib/screens/category_screen.dart` | Gọi CRUD category |
-| UI Profile | `lib/screens/profile_screen.dart` | Gọi updateProfile |
+| Thành phần       | File chính                             | Dòng code CRUD          |
+|------------------|----------------------------------------|-------------------------|
+| Kết nối Supabase | `lib/main.dart`                        | 14-17                   |
+| Auth             | `lib/services/auth_service.dart`       | Toàn bộ file (135 dòng) |
+| CRUD Tasks       | `lib/services/database_service.dart`   | 110-201                 |
+| CRUD Categories  | `lib/services/database_service.dart`   | 31-106                  |
+| Task Model       | `lib/models/task_model.dart`           | 108 dòng                |
+| Category Model   | `lib/models/category_model.dart`       | 41 dòng                 |
+| User Model       | `lib/models/user_model.dart`           | 36 dòng                 |
+| UI Task          | `lib/screens/home_screen.dart`         | Gọi CRUD qua Provider   |
+| UI Add/Edit      | `lib/screens/add_edit_task_screen.dart`| Gọi addTask/updateTask  |
+| UI Category      | `lib/screens/category_screen.dart`     | Gọi CRUD category       |
+| UI Profile       | `lib/screens/profile_screen.dart`      | Gọi updateProfile       |
