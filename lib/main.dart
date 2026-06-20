@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/auth_service.dart';
 import 'services/database_service.dart';
+import 'services/favorite_service.dart';
 import 'screens/splash_screen.dart';
 import 'theme.dart';
 
@@ -28,6 +29,9 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => DatabaseService()),
+        ChangeNotifierProvider(
+          create: (_) => FavoriteService()..loadFavorites(),
+        ),
       ],
       child: MaterialApp(
         title: 'TaskFlow',

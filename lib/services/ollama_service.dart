@@ -18,14 +18,28 @@ class OllamaService {
   static const String _model = 'gemma3:1b';
 
   static final List<String> _validIcons = [
-    'folder', 'work', 'school', 'home', 'fitness', 'shopping',
-    'music', 'book', 'code', 'language', 'trophy', 'flight',
-    'pets', 'heart', 'star', 'person',
+    'folder',
+    'work',
+    'school',
+    'home',
+    'fitness',
+    'shopping',
+    'music',
+    'book',
+    'code',
+    'language',
+    'trophy',
+    'flight',
+    'pets',
+    'heart',
+    'star',
+    'person',
   ];
 
   /// Generate a description and category suggestion for a task title.
   static Future<AiSuggestion> suggest(String taskTitle) async {
-    final prompt = '''You are a task assistant. Given a task title, output DESCRIPTION, CATEGORY and ICON.
+    final prompt =
+        '''You are a task assistant. Given a task title, output DESCRIPTION, CATEGORY and ICON.
 Rules:
 - Respond in the SAME LANGUAGE as the task title (Vietnamese or English).
 - CATEGORY must be specific to the task content. Do NOT always say "Work". Pick the best fit.
@@ -48,18 +62,22 @@ ICON: <one of: folder, work, school, home, fitness, shopping, music, book, code,
 Task: "$taskTitle"''';
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/generate'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'model': _model,
-          'prompt': prompt,
-          'stream': false,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/api/generate'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'model': _model,
+              'prompt': prompt,
+              'stream': false,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode != 200) {
-        return AiSuggestion(description: 'Không thể tạo mô tả. Vui lòng nhập thủ công.');
+        return AiSuggestion(
+          description: 'Không thể tạo mô tả. Vui lòng nhập thủ công.',
+        );
       }
 
       final data = jsonDecode(response.body);
@@ -67,7 +85,9 @@ Task: "$taskTitle"''';
 
       return _parse(text);
     } catch (e) {
-      return AiSuggestion(description: 'Lỗi kết nối AI. Vui lòng nhập thủ công.');
+      return AiSuggestion(
+        description: 'Lỗi kết nối AI. Vui lòng nhập thủ công.',
+      );
     }
   }
 
@@ -77,13 +97,19 @@ Task: "$taskTitle"''';
     String? categoryIcon;
 
     // Extract DESCRIPTION line
-    final descMatch = RegExp(r'DESCRIPTION:\s*(.+)', caseSensitive: false).firstMatch(text);
+    final descMatch = RegExp(
+      r'DESCRIPTION:\s*(.+)',
+      caseSensitive: false,
+    ).firstMatch(text);
     if (descMatch != null) {
       description = descMatch.group(1)!.trim();
     }
 
     // Extract CATEGORY line — stop before ICON keyword if on same line
-    final catMatch = RegExp(r'CATEGORY:\s*(.+?)(?:\s+ICON[:\s]|$)', caseSensitive: false).firstMatch(text);
+    final catMatch = RegExp(
+      r'CATEGORY:\s*(.+?)(?:\s+ICON[:\s]|$)',
+      caseSensitive: false,
+    ).firstMatch(text);
     if (catMatch != null) {
       categoryName = catMatch.group(1)!.trim();
       // Clean up any trailing punctuation or extra text
@@ -92,7 +118,10 @@ Task: "$taskTitle"''';
     }
 
     // Extract ICON line
-    final iconMatch = RegExp(r'ICON:\s*(\w+)', caseSensitive: false).firstMatch(text);
+    final iconMatch = RegExp(
+      r'ICON:\s*(\w+)',
+      caseSensitive: false,
+    ).firstMatch(text);
     if (iconMatch != null) {
       final icon = iconMatch.group(1)!.trim().toLowerCase();
       categoryIcon = _validIcons.contains(icon) ? icon : 'folder';
